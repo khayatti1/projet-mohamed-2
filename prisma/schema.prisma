@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String   @unique
+  password  String
+  role      Role     @default(CANDIDATE)
+  cvUrl     String?
+  companyId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  company         Company?      @relation(fields: [companyId], references: [id])
+  createdOffers   JobOffer[]    @relation("RecruiterOffers")
+  applications    Application[]
+  technicalTests  TechnicalTest[]
+
+  @@map("users")
+}
+
+model Company {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  location    String?
+  website     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  users     User[]
+  jobOffers JobOffer[]
+
+  @@map("companies")
+}
+
+model JobOffer {
+  id              String   @id @default(cuid())
+  title           String
+  description     String
+  requirements    String?
+  location        String?
+  salary          String?
+  contractType    String?
+  experienceLevel String?
+  skills          String[]
+  deadline        DateTime?
+  isActive        Boolean  @default(true)
+  companyId       String
+  recruiterId     String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  company      Company       @relation(fields: [companyId], references: [id])
+  recruiter    User          @relation("RecruiterOffers", fields: [recruiterId], references: [id])
+  applications Application[]
+
+  @@map("job_offers")
+}
+
+model Application {
+  id           String            @id @default(cuid())
+  jobOfferId   String
+  candidateId  String
+  status       ApplicationStatus @default(PENDING)
+  cvPath       String?
+  coverLetter  String?
+  aiScore      Int?
+  aiAnalysis   String?
+  cvScore      Int?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  // Relations
+  jobOffer       JobOffer        @relation(fields: [jobOfferId], references: [id])
+  candidate      User            @relation(fields: [candidateId], references: [id])
+  technicalTests TechnicalTest[]
+
+  @@unique([jobOfferId, candidateId])
+  @@map("applications")
+}
+
+model TechnicalTest {
+  id            String    @id @default(cuid())
+  applicationId String
+  userId        String
+  questions     String // JSON
+  answers       String? // JSON
+  score         Int?
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  application Application @relation(fields: [applicationId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
+
+  @@map("technical_tests")
+}
+
+enum Role {
+  CEO
+  RECRUITER
+  CANDIDATE
+}
+
+enum ApplicationStatus {
+  PENDING
+  CV_REJECTED
+  TEST_PENDING
+  TEST_COMPLETED
+  ACCEPTED
+  REJECTED
+}
